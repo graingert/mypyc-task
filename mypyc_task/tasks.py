@@ -19,12 +19,12 @@ import warnings
 import weakref
 from types import GenericAlias
 
-from . import base_tasks
+from . import base_tasks  # type: ignore[attr-defined]
 from . import coroutines
-from . import events
-from . import exceptions
+from . import events  # type: ignore[attr-defined]
+from . import exceptions  # type: ignore[attr-defined]
 from . import futures
-from .coroutines import _is_coroutine
+from .coroutines import _is_coroutine  # type: ignore[import]
 
 # Helper to generate new task names
 # This uses itertools.count() instead of a "+= 1" operation because the latter
@@ -32,14 +32,14 @@ from .coroutines import _is_coroutine
 _task_name_counter = itertools.count(1).__next__
 
 
-def current_task(loop=None):
+def current_task(loop=None):  # type: ignore[no-untyped-def]
     """Return a currently executed task."""
     if loop is None:
         loop = events.get_running_loop()
     return _current_tasks.get(loop)
 
 
-def all_tasks(loop=None):
+def all_tasks(loop=None):  # type: ignore[no-untyped-def]
     """Return a set of all tasks for the loop."""
     if loop is None:
         loop = events.get_running_loop()
@@ -59,10 +59,10 @@ def all_tasks(loop=None):
         else:
             break
     return {t for t in tasks
-            if futures._get_loop(t) is loop and not t.done()}
+            if futures._get_loop(t) is loop and not t.done()}  # type: ignore[no-untyped-call]
 
 
-def _set_task_name(task, name):
+def _set_task_name(task, name):  # type: ignore[no-untyped-def]
     if name is not None:
         try:
             set_name = task.set_name
@@ -93,8 +93,8 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
     # status is still pending
     _log_destroy_pending = True
 
-    def __init__(self, coro, *, loop=None, name=None, context=None):
-        super().__init__(loop=loop)
+    def __init__(self, coro, *, loop=None, name=None, context=None):  # type: ignore[no-untyped-def]
+        super().__init__(loop=loop)  # type: ignore[no-untyped-call]
         if self._source_traceback:
             del self._source_traceback[-1]
         if not coroutines.iscoroutine(coro):
@@ -117,10 +117,10 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
         else:
             self._context = context
 
-        self._loop.call_soon(self.__step, context=self._context)
-        _register_task(self)
+        self._loop.call_soon(self.__step, context=self._context)  # type: ignore[union-attr]
+        _register_task(self)  # type: ignore[no-untyped-call]
 
-    def __del__(self):
+    def __del__(self):  # type: ignore[no-untyped-def]
         if self._state == futures._PENDING and self._log_destroy_pending:
             context = {
                 'task': self,
@@ -128,30 +128,30 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
             }
             if self._source_traceback:
                 context['source_traceback'] = self._source_traceback
-            self._loop.call_exception_handler(context)
-        super().__del__()
+            self._loop.call_exception_handler(context)  # type: ignore[union-attr]
+        super().__del__()  # type: ignore[no-untyped-call]
 
     __class_getitem__ = classmethod(GenericAlias)
 
-    def __repr__(self):
+    def __repr__(self):  # type: ignore[no-untyped-def]
         return base_tasks._task_repr(self)
 
-    def get_coro(self):
+    def get_coro(self):  # type: ignore[no-untyped-def]
         return self._coro
 
-    def get_name(self):
+    def get_name(self):  # type: ignore[no-untyped-def]
         return self._name
 
-    def set_name(self, value):
+    def set_name(self, value):  # type: ignore[no-untyped-def]
         self._name = str(value)
 
-    def set_result(self, result):
+    def set_result(self, result):  # type: ignore[no-untyped-def]
         raise RuntimeError('Task does not support set_result operation')
 
-    def set_exception(self, exception):
+    def set_exception(self, exception):  # type: ignore[no-untyped-def]
         raise RuntimeError('Task does not support set_exception operation')
 
-    def get_stack(self, *, limit=None):
+    def get_stack(self, *, limit=None):  # type: ignore[no-untyped-def]
         """Return the list of stack frames for this task's coroutine.
 
         If the coroutine is not done, this returns the stack where it is
@@ -174,7 +174,7 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
         """
         return base_tasks._task_get_stack(self, limit)
 
-    def print_stack(self, *, limit=None, file=None):
+    def print_stack(self, *, limit=None, file=None):  # type: ignore[no-untyped-def]
         """Print the stack or traceback for this task's coroutine.
 
         This produces output similar to that of the traceback module,
@@ -185,7 +185,7 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
         """
         return base_tasks._task_print_stack(self, limit, file)
 
-    def cancel(self, msg=None):
+    def cancel(self, msg=None):  # type: ignore[no-untyped-def]
         """Request that this task cancel itself.
 
         This arranges for a CancelledError to be thrown into the
@@ -213,7 +213,7 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
                           "scheduled for removal in Python 3.14.",
                           DeprecationWarning, stacklevel=2)
         self._log_traceback = False
-        if self.done():
+        if self.done():  # type: ignore[no-untyped-call]
             return False
         self._num_cancels_requested += 1
         # These two lines are controversial.  See discussion starting at
@@ -232,7 +232,7 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
         self._cancel_message = msg
         return True
 
-    def cancelling(self):
+    def cancelling(self):  # type: ignore[no-untyped-def]
         """Return the count of the task's cancellation requests.
 
         This count is incremented when .cancel() is called
@@ -240,7 +240,7 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
         """
         return self._num_cancels_requested
 
-    def uncancel(self):
+    def uncancel(self):  # type: ignore[no-untyped-def]
         """Decrement the task's count of cancellation requests.
 
         This should be used by tasks that catch CancelledError
@@ -252,18 +252,18 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
             self._num_cancels_requested -= 1
         return self._num_cancels_requested
 
-    def __step(self, exc=None):
-        if self.done():
+    def __step(self, exc=None):  # type: ignore[no-untyped-def]
+        if self.done():  # type: ignore[no-untyped-call]
             raise exceptions.InvalidStateError(
                 f'_step(): already done: {self!r}, {exc!r}')
         if self._must_cancel:
             if not isinstance(exc, exceptions.CancelledError):
-                exc = self._make_cancelled_error()
+                exc = self._make_cancelled_error()  # type: ignore[no-untyped-call]
             self._must_cancel = False
         coro = self._coro
         self._fut_waiter = None
 
-        _enter_task(self._loop, self)
+        _enter_task(self._loop, self)  # type: ignore[no-untyped-call]
         # Call either coro.throw(exc) or coro.send(None).
         try:
             if exc is None:
@@ -276,27 +276,27 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
             if self._must_cancel:
                 # Task is cancelled right before coro stops.
                 self._must_cancel = False
-                super().cancel(msg=self._cancel_message)
+                super().cancel(msg=self._cancel_message)  # type: ignore[no-untyped-call]
             else:
-                super().set_result(exc.value)
+                super().set_result(exc.value)  # type: ignore[no-untyped-call]
         except exceptions.CancelledError as exc:
             # Save the original exception so we can chain it later.
             self._cancelled_exc = exc
-            super().cancel()  # I.e., Future.cancel(self).
+            super().cancel()    # type: ignore[no-untyped-call] # I.e., Future.cancel(self).
         except (KeyboardInterrupt, SystemExit) as exc:
-            super().set_exception(exc)
+            super().set_exception(exc)  # type: ignore[no-untyped-call]
             raise
         except BaseException as exc:
-            super().set_exception(exc)
+            super().set_exception(exc)  # type: ignore[no-untyped-call]
         else:
             blocking = getattr(result, '_asyncio_future_blocking', None)
             if blocking is not None:
                 # Yielded Future must come from Future.__iter__().
-                if futures._get_loop(result) is not self._loop:
+                if futures._get_loop(result) is not self._loop:  # type: ignore[no-untyped-call]
                     new_exc = RuntimeError(
                         f'Task {self!r} got Future '
                         f'{result!r} attached to a different loop')
-                    self._loop.call_soon(
+                    self._loop.call_soon(  # type: ignore[union-attr]
                         self.__step, new_exc, context=self._context)
                 elif blocking:
                     if result is self:
@@ -322,29 +322,29 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
 
             elif result is None:
                 # Bare yield relinquishes control for one event loop iteration.
-                self._loop.call_soon(self.__step, context=self._context)
+                self._loop.call_soon(self.__step, context=self._context)  # type: ignore[union-attr]
             elif inspect.isgenerator(result):
                 # Yielding a generator is just wrong.
                 new_exc = RuntimeError(
                     f'yield was used instead of yield from for '
                     f'generator in task {self!r} with {result!r}')
-                self._loop.call_soon(
+                self._loop.call_soon(  # type: ignore[union-attr]
                     self.__step, new_exc, context=self._context)
             else:
                 # Yielding something else is an error.
                 new_exc = RuntimeError(f'Task got bad yield: {result!r}')
-                self._loop.call_soon(
+                self._loop.call_soon(  # type: ignore[union-attr]
                     self.__step, new_exc, context=self._context)
         finally:
-            _leave_task(self._loop, self)
-            self = None  # Needed to break cycles when an exception occurs.
+            _leave_task(self._loop, self)  # type: ignore[no-untyped-call]
+            self = None    # type: ignore[assignment] # Needed to break cycles when an exception occurs.
 
-    def __wakeup(self, future):
+    def __wakeup(self, future):  # type: ignore[no-untyped-def]
         try:
             future.result()
         except BaseException as exc:
             # This may also be a cancellation.
-            self.__step(exc)
+            self.__step(exc)  # type: ignore[no-untyped-call]
         else:
             # Don't pass the value of `future.result()` explicitly,
             # as `Future.__iter__` and `Future.__await__` don't need it.
@@ -352,23 +352,23 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
             # Python eval loop would use `.send(value)` method call,
             # instead of `__next__()`, which is slower for futures
             # that return non-generator iterators from their `__iter__`.
-            self.__step()
-        self = None  # Needed to break cycles when an exception occurs.
+            self.__step()  # type: ignore[no-untyped-call]
+        self = None    # type: ignore[assignment] # Needed to break cycles when an exception occurs.
 
 
 _PyTask = Task
 
 
 try:
-    import _asyncio
+    import _asyncio  # type: ignore[import]
 except ImportError:
     pass
 else:
     # _CTask is needed for tests.
-    Task = _CTask = _asyncio.Task
+    Task = _CTask = _asyncio.Task  # type: ignore[misc]
 
 
-def create_task(coro, *, name=None, context=None):
+def create_task(coro, *, name=None, context=None):  # type: ignore[no-untyped-def]
     """Schedule the execution of a coroutine object in a spawn task.
 
     Return a Task object.
@@ -380,7 +380,7 @@ def create_task(coro, *, name=None, context=None):
     else:
         task = loop.create_task(coro, context=context)
 
-    _set_task_name(task, name)
+    _set_task_name(task, name)  # type: ignore[no-untyped-call]
     return task
 
 
@@ -391,7 +391,7 @@ FIRST_EXCEPTION = concurrent.futures.FIRST_EXCEPTION
 ALL_COMPLETED = concurrent.futures.ALL_COMPLETED
 
 
-async def wait(fs, *, timeout=None, return_when=ALL_COMPLETED):
+async def wait(fs, *, timeout=None, return_when=ALL_COMPLETED):  # type: ignore[no-untyped-def]
     """Wait for the Futures or Tasks given by fs to complete.
 
     The fs iterable must not be empty.
@@ -420,15 +420,15 @@ async def wait(fs, *, timeout=None, return_when=ALL_COMPLETED):
         raise TypeError("Passing coroutines is forbidden, use tasks explicitly.")
 
     loop = events.get_running_loop()
-    return await _wait(fs, timeout, return_when, loop)
+    return await _wait(fs, timeout, return_when, loop)  # type: ignore[no-untyped-call]
 
 
-def _release_waiter(waiter, *args):
+def _release_waiter(waiter, *args):  # type: ignore[no-untyped-def]
     if not waiter.done():
         waiter.set_result(None)
 
 
-async def wait_for(fut, timeout):
+async def wait_for(fut, timeout):  # type: ignore[no-untyped-def]
     """Wait for the single Future or coroutine to complete, with timeout.
 
     Coroutine will be wrapped in Task.
@@ -447,12 +447,12 @@ async def wait_for(fut, timeout):
         return await fut
 
     if timeout <= 0:
-        fut = ensure_future(fut, loop=loop)
+        fut = ensure_future(fut, loop=loop)  # type: ignore[no-untyped-call]
 
         if fut.done():
             return fut.result()
 
-        await _cancel_and_wait(fut, loop=loop)
+        await _cancel_and_wait(fut, loop=loop)  # type: ignore[no-untyped-call]
         try:
             return fut.result()
         except exceptions.CancelledError as exc:
@@ -462,7 +462,7 @@ async def wait_for(fut, timeout):
     timeout_handle = loop.call_later(timeout, _release_waiter, waiter)
     cb = functools.partial(_release_waiter, waiter)
 
-    fut = ensure_future(fut, loop=loop)
+    fut = ensure_future(fut, loop=loop)  # type: ignore[no-untyped-call]
     fut.add_done_callback(cb)
 
     try:
@@ -477,7 +477,7 @@ async def wait_for(fut, timeout):
                 # We must ensure that the task is not running
                 # after wait_for() returns.
                 # See https://bugs.python.org/issue32751
-                await _cancel_and_wait(fut, loop=loop)
+                await _cancel_and_wait(fut, loop=loop)  # type: ignore[no-untyped-call]
                 raise
 
         if fut.done():
@@ -487,7 +487,7 @@ async def wait_for(fut, timeout):
             # We must ensure that the task is not running
             # after wait_for() returns.
             # See https://bugs.python.org/issue32751
-            await _cancel_and_wait(fut, loop=loop)
+            await _cancel_and_wait(fut, loop=loop)  # type: ignore[no-untyped-call]
             # In case task cancellation failed with some
             # exception, we should re-raise it
             # See https://bugs.python.org/issue40607
@@ -499,7 +499,7 @@ async def wait_for(fut, timeout):
         timeout_handle.cancel()
 
 
-async def _wait(fs, timeout, return_when, loop):
+async def _wait(fs, timeout, return_when, loop):  # type: ignore[no-untyped-def]
     """Internal helper for wait().
 
     The fs argument must be a collection of Futures.
@@ -511,7 +511,7 @@ async def _wait(fs, timeout, return_when, loop):
         timeout_handle = loop.call_later(timeout, _release_waiter, waiter)
     counter = len(fs)
 
-    def _on_completion(f):
+    def _on_completion(f):  # type: ignore[no-untyped-def]
         nonlocal counter
         counter -= 1
         if (counter <= 0 or
@@ -543,7 +543,7 @@ async def _wait(fs, timeout, return_when, loop):
     return done, pending
 
 
-async def _cancel_and_wait(fut, loop):
+async def _cancel_and_wait(fut, loop):  # type: ignore[no-untyped-def]
     """Cancel the *fut* future or task and wait until it completes."""
 
     waiter = loop.create_future()
@@ -560,7 +560,7 @@ async def _cancel_and_wait(fut, loop):
 
 
 # This is *not* a @coroutine!  It is just an iterator (yielding Futures).
-def as_completed(fs, *, timeout=None):
+def as_completed(fs, *, timeout=None):  # type: ignore[no-untyped-def]
     """Return an iterator whose values are coroutines.
 
     When waiting for the yielded coroutines you'll get the results (or
@@ -581,20 +581,20 @@ def as_completed(fs, *, timeout=None):
     if futures.isfuture(fs) or coroutines.iscoroutine(fs):
         raise TypeError(f"expect an iterable of futures, not {type(fs).__name__}")
 
-    from .queues import Queue  # Import here to avoid circular import problem.
+    from .queues import Queue    # type: ignore[import] # Import here to avoid circular import problem.
     done = Queue()
 
     loop = events._get_event_loop()
-    todo = {ensure_future(f, loop=loop) for f in set(fs)}
+    todo = {ensure_future(f, loop=loop) for f in set(fs)}  # type: ignore[no-untyped-call]
     timeout_handle = None
 
-    def _on_timeout():
+    def _on_timeout():  # type: ignore[no-untyped-def]
         for f in todo:
             f.remove_done_callback(_on_completion)
             done.put_nowait(None)  # Queue a dummy value for _wait_for_one().
         todo.clear()  # Can't do todo.remove(f) in the loop.
 
-    def _on_completion(f):
+    def _on_completion(f):  # type: ignore[no-untyped-def]
         if not todo:
             return  # _on_timeout() was here first.
         todo.remove(f)
@@ -602,7 +602,7 @@ def as_completed(fs, *, timeout=None):
         if not todo and timeout_handle is not None:
             timeout_handle.cancel()
 
-    async def _wait_for_one():
+    async def _wait_for_one():  # type: ignore[no-untyped-def]
         f = await done.get()
         if f is None:
             # Dummy value from _on_timeout().
@@ -614,11 +614,11 @@ def as_completed(fs, *, timeout=None):
     if todo and timeout is not None:
         timeout_handle = loop.call_later(timeout, _on_timeout)
     for _ in range(len(todo)):
-        yield _wait_for_one()
+        yield _wait_for_one()  # type: ignore[no-untyped-call]
 
 
 @types.coroutine
-def __sleep0():
+def __sleep0():  # type: ignore[no-untyped-def]
     """Skip one event loop run cycle.
 
     This is a private helper for 'asyncio.sleep()', used
@@ -629,10 +629,10 @@ def __sleep0():
     yield
 
 
-async def sleep(delay, result=None):
+async def sleep(delay, result=None):  # type: ignore[no-untyped-def]
     """Coroutine that completes after a given time (in seconds)."""
     if delay <= 0:
-        await __sleep0()
+        await __sleep0()  # type: ignore[no-untyped-call]
         return result
 
     loop = events.get_running_loop()
@@ -646,24 +646,24 @@ async def sleep(delay, result=None):
         h.cancel()
 
 
-def ensure_future(coro_or_future, *, loop=None):
+def ensure_future(coro_or_future, *, loop=None):  # type: ignore[no-untyped-def]
     """Wrap a coroutine or an awaitable in a future.
 
     If the argument is a Future, it is returned directly.
     """
-    return _ensure_future(coro_or_future, loop=loop)
+    return _ensure_future(coro_or_future, loop=loop)  # type: ignore[no-untyped-call]
 
 
-def _ensure_future(coro_or_future, *, loop=None):
+def _ensure_future(coro_or_future, *, loop=None):  # type: ignore[no-untyped-def]
     if futures.isfuture(coro_or_future):
-        if loop is not None and loop is not futures._get_loop(coro_or_future):
+        if loop is not None and loop is not futures._get_loop(coro_or_future):  # type: ignore[no-untyped-call]
             raise ValueError('The future belongs to a different loop than '
                             'the one specified as the loop argument')
         return coro_or_future
     called_wrap_awaitable = False
     if not coroutines.iscoroutine(coro_or_future):
         if inspect.isawaitable(coro_or_future):
-            coro_or_future = _wrap_awaitable(coro_or_future)
+            coro_or_future = _wrap_awaitable(coro_or_future)  # type: ignore[no-untyped-call]
             called_wrap_awaitable = True
         else:
             raise TypeError('An asyncio.Future, a coroutine or an awaitable '
@@ -680,7 +680,7 @@ def _ensure_future(coro_or_future, *, loop=None):
 
 
 @types.coroutine
-def _wrap_awaitable(awaitable):
+def _wrap_awaitable(awaitable):  # type: ignore[no-untyped-def]
     """Helper for asyncio.ensure_future().
 
     Wraps awaitable (an object with __await__) into a coroutine
@@ -688,7 +688,7 @@ def _wrap_awaitable(awaitable):
     """
     return (yield from awaitable.__await__())
 
-_wrap_awaitable._is_coroutine = _is_coroutine
+_wrap_awaitable._is_coroutine = _is_coroutine  # type: ignore[attr-defined]
 
 
 class _GatheringFuture(futures.Future):
@@ -699,14 +699,14 @@ class _GatheringFuture(futures.Future):
     cancelled.
     """
 
-    def __init__(self, children, *, loop):
+    def __init__(self, children, *, loop):  # type: ignore[no-untyped-def]
         assert loop is not None
-        super().__init__(loop=loop)
+        super().__init__(loop=loop)  # type: ignore[no-untyped-call]
         self._children = children
         self._cancel_requested = False
 
-    def cancel(self, msg=None):
-        if self.done():
+    def cancel(self, msg=None):  # type: ignore[no-untyped-def]
+        if self.done():  # type: ignore[no-untyped-call]
             return False
         ret = False
         for child in self._children:
@@ -720,7 +720,7 @@ class _GatheringFuture(futures.Future):
         return ret
 
 
-def gather(*coros_or_futures, return_exceptions=False):
+def gather(*coros_or_futures, return_exceptions=False):  # type: ignore[no-untyped-def]
     """Return a future aggregating results from the given coroutines/futures.
 
     Coroutines will be wrapped in a future and scheduled in the event
@@ -756,8 +756,8 @@ def gather(*coros_or_futures, return_exceptions=False):
         outer.set_result([])
         return outer
 
-    def _done_callback(fut):
-        nonlocal nfinished
+    def _done_callback(fut):  # type: ignore[no-untyped-def]
+        nonlocal nfinished  # type: ignore[misc]
         nfinished += 1
 
         if outer is None or outer.done():
@@ -819,9 +819,9 @@ def gather(*coros_or_futures, return_exceptions=False):
     outer = None  # bpo-46672
     for arg in coros_or_futures:
         if arg not in arg_to_fut:
-            fut = _ensure_future(arg, loop=loop)
+            fut = _ensure_future(arg, loop=loop)  # type: ignore[no-untyped-call]
             if loop is None:
-                loop = futures._get_loop(fut)
+                loop = futures._get_loop(fut)  # type: ignore[no-untyped-call]
             if fut is not arg:
                 # 'arg' was not a Future, therefore, 'fut' is a new
                 # Future created specifically for 'arg'.  Since the caller
@@ -839,11 +839,11 @@ def gather(*coros_or_futures, return_exceptions=False):
 
         children.append(fut)
 
-    outer = _GatheringFuture(children, loop=loop)
+    outer = _GatheringFuture(children, loop=loop)  # type: ignore[no-untyped-call]
     return outer
 
 
-def shield(arg):
+def shield(arg):  # type: ignore[no-untyped-def]
     """Wait for a future, shielding it from cancellation.
 
     The statement
@@ -876,14 +876,14 @@ def shield(arg):
     weak references to tasks. A task that isn't referenced elsewhere
     may get garbage collected at any time, even before it's done.
     """
-    inner = _ensure_future(arg)
+    inner = _ensure_future(arg)  # type: ignore[no-untyped-call]
     if inner.done():
         # Shortcut.
         return inner
-    loop = futures._get_loop(inner)
+    loop = futures._get_loop(inner)  # type: ignore[no-untyped-call]
     outer = loop.create_future()
 
-    def _inner_done_callback(inner):
+    def _inner_done_callback(inner):  # type: ignore[no-untyped-def]
         if outer.cancelled():
             if not inner.cancelled():
                 # Mark inner's result as retrieved.
@@ -900,7 +900,7 @@ def shield(arg):
                 outer.set_result(inner.result())
 
 
-    def _outer_done_callback(outer):
+    def _outer_done_callback(outer):  # type: ignore[no-untyped-def]
         if not inner.done():
             inner.remove_done_callback(_inner_done_callback)
 
@@ -909,18 +909,18 @@ def shield(arg):
     return outer
 
 
-def run_coroutine_threadsafe(coro, loop):
+def run_coroutine_threadsafe(coro, loop):  # type: ignore[no-untyped-def]
     """Submit a coroutine object to a given event loop.
 
     Return a concurrent.futures.Future to access the result.
     """
     if not coroutines.iscoroutine(coro):
         raise TypeError('A coroutine object is required')
-    future = concurrent.futures.Future()
+    future = concurrent.futures.Future()  # type: ignore[var-annotated]
 
-    def callback():
+    def callback():  # type: ignore[no-untyped-def]
         try:
-            futures._chain_future(ensure_future(coro, loop=loop), future)
+            futures._chain_future(ensure_future(coro, loop=loop), future)  # type: ignore[no-untyped-call, no-untyped-call]
         except (SystemExit, KeyboardInterrupt):
             raise
         except BaseException as exc:
@@ -933,19 +933,19 @@ def run_coroutine_threadsafe(coro, loop):
 
 
 # WeakSet containing all alive tasks.
-_all_tasks = weakref.WeakSet()
+_all_tasks = weakref.WeakSet()  # type: ignore[var-annotated]
 
 # Dictionary containing tasks that are currently active in
 # all running event loops.  {EventLoop: Task}
-_current_tasks = {}
+_current_tasks = {}  # type: ignore[var-annotated]
 
 
-def _register_task(task):
+def _register_task(task):  # type: ignore[no-untyped-def]
     """Register a new task in asyncio as executed by loop."""
     _all_tasks.add(task)
 
 
-def _enter_task(loop, task):
+def _enter_task(loop, task):  # type: ignore[no-untyped-def]
     current_task = _current_tasks.get(loop)
     if current_task is not None:
         raise RuntimeError(f"Cannot enter into task {task!r} while another "
@@ -953,7 +953,7 @@ def _enter_task(loop, task):
     _current_tasks[loop] = task
 
 
-def _leave_task(loop, task):
+def _leave_task(loop, task):  # type: ignore[no-untyped-def]
     current_task = _current_tasks.get(loop)
     if current_task is not task:
         raise RuntimeError(f"Leaving task {task!r} does not match "
@@ -961,7 +961,7 @@ def _leave_task(loop, task):
     del _current_tasks[loop]
 
 
-def _unregister_task(task):
+def _unregister_task(task):  # type: ignore[no-untyped-def]
     """Unregister a task."""
     _all_tasks.discard(task)
 
@@ -973,7 +973,7 @@ _py_leave_task = _leave_task
 
 
 try:
-    from _asyncio import (_register_task, _unregister_task,
+    from _asyncio import (_register_task, _unregister_task,  # type: ignore[no-redef, no-redef, no-redef, no-redef, no-redef, no-redef]
                           _enter_task, _leave_task,
                           _all_tasks, _current_tasks)
 except ImportError:

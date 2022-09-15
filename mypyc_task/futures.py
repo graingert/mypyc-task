@@ -11,10 +11,10 @@ import sys
 import warnings
 from types import GenericAlias
 
-from . import base_futures
-from . import events
-from . import exceptions
-from . import format_helpers
+from . import base_futures  # type: ignore[attr-defined]
+from . import events  # type: ignore[attr-defined]
+from . import exceptions  # type: ignore[attr-defined]
+from . import format_helpers  # type: ignore[attr-defined]
 
 
 isfuture = base_futures.isfuture
@@ -70,7 +70,7 @@ class Future:
 
     __log_traceback = False
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *, loop=None):  # type: ignore[no-untyped-def]
         """Initialize the future.
 
         The optional event_loop argument allows explicitly setting the event
@@ -86,10 +86,10 @@ class Future:
             self._source_traceback = format_helpers.extract_stack(
                 sys._getframe(1))
 
-    def __repr__(self):
+    def __repr__(self):  # type: ignore[no-untyped-def]
         return base_futures._future_repr(self)
 
-    def __del__(self):
+    def __del__(self):  # type: ignore[no-untyped-def]
         if not self.__log_traceback:
             # set_exception() was not called, or result() or exception()
             # has consumed the exception
@@ -103,28 +103,28 @@ class Future:
         }
         if self._source_traceback:
             context['source_traceback'] = self._source_traceback
-        self._loop.call_exception_handler(context)
+        self._loop.call_exception_handler(context)  # type: ignore[union-attr]
 
     __class_getitem__ = classmethod(GenericAlias)
 
     @property
-    def _log_traceback(self):
+    def _log_traceback(self):  # type: ignore[no-untyped-def]
         return self.__log_traceback
 
     @_log_traceback.setter
-    def _log_traceback(self, val):
+    def _log_traceback(self, val):  # type: ignore[no-untyped-def]
         if val:
             raise ValueError('_log_traceback can only be set to False')
         self.__log_traceback = False
 
-    def get_loop(self):
+    def get_loop(self):  # type: ignore[no-untyped-def]
         """Return the event loop the Future is bound to."""
         loop = self._loop
         if loop is None:
             raise RuntimeError("Future object is not initialized.")
         return loop
 
-    def _make_cancelled_error(self):
+    def _make_cancelled_error(self):  # type: ignore[no-untyped-def]
         """Create the CancelledError to raise if the Future is cancelled.
 
         This should only be called once when handling a cancellation since
@@ -144,7 +144,7 @@ class Future:
         self._cancelled_exc = None
         return exc
 
-    def cancel(self, msg=None):
+    def cancel(self, msg=None):  # type: ignore[no-untyped-def]
         """Cancel the future and schedule callbacks.
 
         If the future is already done or cancelled, return False.  Otherwise,
@@ -161,10 +161,10 @@ class Future:
             return False
         self._state = _CANCELLED
         self._cancel_message = msg
-        self.__schedule_callbacks()
+        self.__schedule_callbacks()  # type: ignore[no-untyped-call]
         return True
 
-    def __schedule_callbacks(self):
+    def __schedule_callbacks(self):  # type: ignore[no-untyped-def]
         """Internal: Ask the event loop to call all callbacks.
 
         The callbacks are scheduled to be called as soon as possible. Also
@@ -176,15 +176,15 @@ class Future:
 
         self._callbacks[:] = []
         for callback, ctx in callbacks:
-            self._loop.call_soon(callback, self, context=ctx)
+            self._loop.call_soon(callback, self, context=ctx)  # type: ignore[union-attr]
 
-    def cancelled(self):
+    def cancelled(self):  # type: ignore[no-untyped-def]
         """Return True if the future was cancelled."""
         return self._state == _CANCELLED
 
     # Don't implement running(); see http://bugs.python.org/issue18699
 
-    def done(self):
+    def done(self):  # type: ignore[no-untyped-def]
         """Return True if the future is done.
 
         Done means either that a result / exception are available, or that the
@@ -192,7 +192,7 @@ class Future:
         """
         return self._state != _PENDING
 
-    def result(self):
+    def result(self):  # type: ignore[no-untyped-def]
         """Return the result this future represents.
 
         If the future has been cancelled, raises CancelledError.  If the
@@ -200,7 +200,7 @@ class Future:
         the future is done and has an exception set, this exception is raised.
         """
         if self._state == _CANCELLED:
-            exc = self._make_cancelled_error()
+            exc = self._make_cancelled_error()  # type: ignore[no-untyped-call]
             raise exc
         if self._state != _FINISHED:
             raise exceptions.InvalidStateError('Result is not ready.')
@@ -209,7 +209,7 @@ class Future:
             raise self._exception.with_traceback(self._exception_tb)
         return self._result
 
-    def exception(self):
+    def exception(self):  # type: ignore[no-untyped-def]
         """Return the exception that was set on this future.
 
         The exception (or None if no exception was set) is returned only if
@@ -218,14 +218,14 @@ class Future:
         InvalidStateError.
         """
         if self._state == _CANCELLED:
-            exc = self._make_cancelled_error()
+            exc = self._make_cancelled_error()  # type: ignore[no-untyped-call]
             raise exc
         if self._state != _FINISHED:
             raise exceptions.InvalidStateError('Exception is not set.')
         self.__log_traceback = False
         return self._exception
 
-    def add_done_callback(self, fn, *, context=None):
+    def add_done_callback(self, fn, *, context=None):  # type: ignore[no-untyped-def]
         """Add a callback to be run when the future becomes done.
 
         The callback is called with a single argument - the future object. If
@@ -233,7 +233,7 @@ class Future:
         scheduled with call_soon.
         """
         if self._state != _PENDING:
-            self._loop.call_soon(fn, self, context=context)
+            self._loop.call_soon(fn, self, context=context)  # type: ignore[union-attr]
         else:
             if context is None:
                 context = contextvars.copy_context()
@@ -241,7 +241,7 @@ class Future:
 
     # New method not in PEP 3148.
 
-    def remove_done_callback(self, fn):
+    def remove_done_callback(self, fn):  # type: ignore[no-untyped-def]
         """Remove all instances of a callback from the "call when done" list.
 
         Returns the number of callbacks removed.
@@ -256,7 +256,7 @@ class Future:
 
     # So-called internal methods (note: no set_running_or_notify_cancel()).
 
-    def set_result(self, result):
+    def set_result(self, result):  # type: ignore[no-untyped-def]
         """Mark the future done and set its result.
 
         If the future is already done when this method is called, raises
@@ -266,9 +266,9 @@ class Future:
             raise exceptions.InvalidStateError(f'{self._state}: {self!r}')
         self._result = result
         self._state = _FINISHED
-        self.__schedule_callbacks()
+        self.__schedule_callbacks()  # type: ignore[no-untyped-call]
 
-    def set_exception(self, exception):
+    def set_exception(self, exception):  # type: ignore[no-untyped-def]
         """Mark the future done and set an exception.
 
         If the future is already done when this method is called, raises
@@ -284,16 +284,16 @@ class Future:
         self._exception = exception
         self._exception_tb = exception.__traceback__
         self._state = _FINISHED
-        self.__schedule_callbacks()
+        self.__schedule_callbacks()  # type: ignore[no-untyped-call]
         self.__log_traceback = True
 
-    def __await__(self):
-        if not self.done():
+    def __await__(self):  # type: ignore[no-untyped-def]
+        if not self.done():  # type: ignore[no-untyped-call]
             self._asyncio_future_blocking = True
             yield self  # This tells Task to wait for completion.
-        if not self.done():
+        if not self.done():  # type: ignore[no-untyped-call]
             raise RuntimeError("await wasn't used with future")
-        return self.result()  # May raise too.
+        return self.result()    # type: ignore[no-untyped-call] # May raise too.
 
     __iter__ = __await__  # make compatible with 'yield from'.
 
@@ -302,7 +302,7 @@ class Future:
 _PyFuture = Future
 
 
-def _get_loop(fut):
+def _get_loop(fut):  # type: ignore[no-untyped-def]
     # Tries to call Future.get_loop() if it's available.
     # Otherwise fallbacks to using the old '_loop' property.
     try:
@@ -314,14 +314,14 @@ def _get_loop(fut):
     return fut._loop
 
 
-def _set_result_unless_cancelled(fut, result):
+def _set_result_unless_cancelled(fut, result):  # type: ignore[no-untyped-def]
     """Helper setting the result only if the future was not cancelled."""
     if fut.cancelled():
         return
     fut.set_result(result)
 
 
-def _convert_future_exc(exc):
+def _convert_future_exc(exc):  # type: ignore[no-untyped-def]
     exc_class = type(exc)
     if exc_class is concurrent.futures.CancelledError:
         return exceptions.CancelledError(*exc.args)
@@ -333,7 +333,7 @@ def _convert_future_exc(exc):
         return exc
 
 
-def _set_concurrent_future_state(concurrent, source):
+def _set_concurrent_future_state(concurrent, source):  # type: ignore[no-untyped-def]
     """Copy state from a future to a concurrent.futures.Future."""
     assert source.done()
     if source.cancelled():
@@ -342,13 +342,13 @@ def _set_concurrent_future_state(concurrent, source):
         return
     exception = source.exception()
     if exception is not None:
-        concurrent.set_exception(_convert_future_exc(exception))
+        concurrent.set_exception(_convert_future_exc(exception))  # type: ignore[no-untyped-call]
     else:
         result = source.result()
         concurrent.set_result(result)
 
 
-def _copy_future_state(source, dest):
+def _copy_future_state(source, dest):  # type: ignore[no-untyped-def]
     """Internal helper to copy state from another Future.
 
     The other Future may be a concurrent.futures.Future.
@@ -362,13 +362,13 @@ def _copy_future_state(source, dest):
     else:
         exception = source.exception()
         if exception is not None:
-            dest.set_exception(_convert_future_exc(exception))
+            dest.set_exception(_convert_future_exc(exception))  # type: ignore[no-untyped-call]
         else:
             result = source.result()
             dest.set_result(result)
 
 
-def _chain_future(source, destination):
+def _chain_future(source, destination):  # type: ignore[no-untyped-def]
     """Chain two futures so that when one completes, so does the other.
 
     The result (or exception) of source will be copied to destination.
@@ -381,28 +381,28 @@ def _chain_future(source, destination):
     if not isfuture(destination) and not isinstance(destination,
                                                     concurrent.futures.Future):
         raise TypeError('A future is required for destination argument')
-    source_loop = _get_loop(source) if isfuture(source) else None
-    dest_loop = _get_loop(destination) if isfuture(destination) else None
+    source_loop = _get_loop(source) if isfuture(source) else None  # type: ignore[no-untyped-call]
+    dest_loop = _get_loop(destination) if isfuture(destination) else None  # type: ignore[no-untyped-call]
 
-    def _set_state(future, other):
+    def _set_state(future, other):  # type: ignore[no-untyped-def]
         if isfuture(future):
-            _copy_future_state(other, future)
+            _copy_future_state(other, future)  # type: ignore[no-untyped-call]
         else:
-            _set_concurrent_future_state(future, other)
+            _set_concurrent_future_state(future, other)  # type: ignore[no-untyped-call]
 
-    def _call_check_cancel(destination):
+    def _call_check_cancel(destination):  # type: ignore[no-untyped-def]
         if destination.cancelled():
             if source_loop is None or source_loop is dest_loop:
                 source.cancel()
             else:
                 source_loop.call_soon_threadsafe(source.cancel)
 
-    def _call_set_state(source):
+    def _call_set_state(source):  # type: ignore[no-untyped-def]
         if (destination.cancelled() and
                 dest_loop is not None and dest_loop.is_closed()):
             return
         if dest_loop is None or dest_loop is source_loop:
-            _set_state(destination, source)
+            _set_state(destination, source)  # type: ignore[no-untyped-call]
         else:
             dest_loop.call_soon_threadsafe(_set_state, destination, source)
 
@@ -410,7 +410,7 @@ def _chain_future(source, destination):
     source.add_done_callback(_call_set_state)
 
 
-def wrap_future(future, *, loop=None):
+def wrap_future(future, *, loop=None):  # type: ignore[no-untyped-def]
     """Wrap concurrent.futures.Future object."""
     if isfuture(future):
         return future
@@ -419,14 +419,14 @@ def wrap_future(future, *, loop=None):
     if loop is None:
         loop = events._get_event_loop()
     new_future = loop.create_future()
-    _chain_future(future, new_future)
+    _chain_future(future, new_future)  # type: ignore[no-untyped-call]
     return new_future
 
 
 try:
-    import _asyncio
+    import _asyncio  # type: ignore[import]
 except ImportError:
     pass
 else:
     # _CFuture is needed for tests.
-    Future = _CFuture = _asyncio.Future
+    Future = _CFuture = _asyncio.Future  # type: ignore[misc]
