@@ -75,7 +75,7 @@ class Future(Generic[_T]):
 
     __log_traceback: bool = False
 
-    def __init__(self, *, loop: asyncio.BaseEventLoop | None=None):
+    def __init__(self, *, loop: asyncio.AbstractEventLoop | None=None):
         """Initialize the future.
 
         The optional event_loop argument allows explicitly setting the event

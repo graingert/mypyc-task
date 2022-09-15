@@ -25,7 +25,7 @@ from asyncio import base_tasks
 from asyncio import coroutines
 from asyncio import events
 from asyncio import exceptions
-from asyncio import futures
+from . import futures
 from asyncio.coroutines import _is_coroutine  # type: ignore[attr-defined]
 
 # Helper to generate new task names
@@ -140,8 +140,6 @@ class Task(futures.Future[_T]):  # Inherit Python Task implementation
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)  # type: ignore[union-attr]
         super().__del__()  # type: ignore[no-untyped-call]
-
-    __class_getitem__ = classmethod(GenericAlias)
 
     def __repr__(self):  # type: ignore[no-untyped-def]
         return base_tasks._task_repr(self)
