@@ -82,6 +82,7 @@ class Future(Generic[_T]):
         loop object used by the future. If it's not provided, the future uses
         the default event loop.
         """
+        self._source_traceback: traceback.StackSummary | None = None
         if loop is None:
             self._loop = events._get_event_loop()  # type: ignore[attr-defined]
         else:
@@ -238,8 +239,9 @@ class Future(Generic[_T]):
         the future is already done when this is called, the callback is
         scheduled with call_soon.
         """
+        assert self._loop is not None
         if self._state != _PENDING:
-            self._loop.call_soon(fn, self, context=context)  # type: ignore[union-attr]
+            self._loop.call_soon(fn, self, context=context)
         else:
             if context is None:
                 context = contextvars.copy_context()
@@ -305,134 +307,10 @@ class Future(Generic[_T]):
 
 
 # Needed for testing purposes.
-_PyFuture = Future
+_PyFuture: Final = Future
 
+from asyncio.futures import _get_loop as _get_loop  # type: ignore[attr-defined]
+from asyncio.futures import _chain_future  # type: ignore[attr-defined]
+from asyncio.futures import wrap_future
 
-def _get_loop(fut: object) -> asyncio.AbstractEventLoop | None:
-    # Tries to call Future.get_loop() if it's available.
-    # Otherwise fallbacks to using the old '_loop' property.
-    try:
-        get_loop = fut.get_loop  # type: ignore[attr-defined]
-    except AttributeError:
-        pass
-    else:
-        return get_loop()  # type: ignore[no-any-return]
-    return fut._loop  # type: ignore[attr-defined, no-any-return]
-
-
-def _set_result_unless_cancelled(fut, result):  # type: ignore[no-untyped-def]
-    """Helper setting the result only if the future was not cancelled."""
-    if fut.cancelled():
-        return
-    fut.set_result(result)
-
-
-def _convert_future_exc(exc):  # type: ignore[no-untyped-def]
-    exc_class = type(exc)
-    if exc_class is concurrent.futures.CancelledError:
-        return exceptions.CancelledError(*exc.args)
-    elif exc_class is concurrent.futures.TimeoutError:
-        return exceptions.TimeoutError(*exc.args)
-    elif exc_class is concurrent.futures.InvalidStateError:
-        return exceptions.InvalidStateError(*exc.args)
-    else:
-        return exc
-
-
-def _set_concurrent_future_state(concurrent, source):  # type: ignore[no-untyped-def]
-    """Copy state from a future to a concurrent.futures.Future."""
-    assert source.done()
-    if source.cancelled():
-        concurrent.cancel()
-    if not concurrent.set_running_or_notify_cancel():
-        return
-    exception = source.exception()
-    if exception is not None:
-        concurrent.set_exception(_convert_future_exc(exception))  # type: ignore[no-untyped-call]
-    else:
-        result = source.result()
-        concurrent.set_result(result)
-
-
-def _copy_future_state(source, dest):  # type: ignore[no-untyped-def]
-    """Internal helper to copy state from another Future.
-
-    The other Future may be a concurrent.futures.Future.
-    """
-    assert source.done()
-    if dest.cancelled():
-        return
-    assert not dest.done()
-    if source.cancelled():
-        dest.cancel()
-    else:
-        exception = source.exception()
-        if exception is not None:
-            dest.set_exception(_convert_future_exc(exception))  # type: ignore[no-untyped-call]
-        else:
-            result = source.result()
-            dest.set_result(result)
-
-
-def _chain_future(source, destination):  # type: ignore[no-untyped-def]
-    """Chain two futures so that when one completes, so does the other.
-
-    The result (or exception) of source will be copied to destination.
-    If destination is cancelled, source gets cancelled too.
-    Compatible with both asyncio.Future and concurrent.futures.Future.
-    """
-    if not isfuture(source) and not isinstance(source,
-                                               concurrent.futures.Future):
-        raise TypeError('A future is required for source argument')
-    if not isfuture(destination) and not isinstance(destination,
-                                                    concurrent.futures.Future):
-        raise TypeError('A future is required for destination argument')
-    source_loop = _get_loop(source) if isfuture(source) else None  # type: ignore[no-untyped-call]
-    dest_loop = _get_loop(destination) if isfuture(destination) else None  # type: ignore[no-untyped-call]
-
-    def _set_state(future, other):  # type: ignore[no-untyped-def]
-        if isfuture(future):
-            _copy_future_state(other, future)  # type: ignore[no-untyped-call]
-        else:
-            _set_concurrent_future_state(future, other)  # type: ignore[no-untyped-call]
-
-    def _call_check_cancel(destination):  # type: ignore[no-untyped-def]
-        if destination.cancelled():
-            if source_loop is None or source_loop is dest_loop:
-                source.cancel()
-            else:
-                source_loop.call_soon_threadsafe(source.cancel)
-
-    def _call_set_state(source):  # type: ignore[no-untyped-def]
-        if (destination.cancelled() and
-                dest_loop is not None and dest_loop.is_closed()):
-            return
-        if dest_loop is None or dest_loop is source_loop:
-            _set_state(destination, source)  # type: ignore[no-untyped-call]
-        else:
-            dest_loop.call_soon_threadsafe(_set_state, destination, source)
-
-    destination.add_done_callback(_call_check_cancel)
-    source.add_done_callback(_call_set_state)
-
-
-def wrap_future(future, *, loop=None):  # type: ignore[no-untyped-def]
-    """Wrap concurrent.futures.Future object."""
-    if isfuture(future):
-        return future
-    assert isinstance(future, concurrent.futures.Future), \
-        f'concurrent.futures.Future is expected, got {future!r}'
-    if loop is None:
-        loop = events._get_event_loop()
-    new_future = loop.create_future()
-    _chain_future(future, new_future)  # type: ignore[no-untyped-call]
-    return new_future
-
-
-try:
-    import _asyncio  # type: ignore[import]
-except ImportError:
-    pass
-else:
-    # _CFuture is needed for tests.
-    Future = _CFuture = _asyncio.Future  # type: ignore[misc]
+_CFuture: Final = Future

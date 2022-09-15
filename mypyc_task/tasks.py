@@ -9,6 +9,8 @@ __all__ = (
     '_register_task', '_unregister_task', '_enter_task', '_leave_task',
 )
 
+import asyncio
+from collections.abc import Coroutine
 import concurrent.futures
 import contextvars
 import functools
@@ -17,14 +19,14 @@ import itertools
 import types
 import warnings
 import weakref
-from types import GenericAlias
 
-from . import base_tasks  # type: ignore[attr-defined]
-from . import coroutines
-from . import events  # type: ignore[attr-defined]
-from . import exceptions  # type: ignore[attr-defined]
-from . import futures
-from .coroutines import _is_coroutine  # type: ignore[import]
+from typing import TypeVar, Generic
+from asyncio import base_tasks
+from asyncio import coroutines
+from asyncio import events
+from asyncio import exceptions
+from asyncio import futures
+from asyncio.coroutines import _is_coroutine  # type: ignore[attr-defined]
 
 # Helper to generate new task names
 # This uses itertools.count() instead of a "+= 1" operation because the latter
@@ -59,7 +61,7 @@ def all_tasks(loop=None):  # type: ignore[no-untyped-def]
         else:
             break
     return {t for t in tasks
-            if futures._get_loop(t) is loop and not t.done()}  # type: ignore[no-untyped-call]
+            if futures._get_loop(t) is loop and not t.done()}
 
 
 def _set_task_name(task, name):  # type: ignore[no-untyped-def]
@@ -74,8 +76,9 @@ def _set_task_name(task, name):  # type: ignore[no-untyped-def]
         else:
             set_name(name)
 
+_T = TypeVar("_T")
 
-class Task(futures._PyFuture):  # Inherit Python Task implementation
+class Task(futures.Future[_T]):  # Inherit Python Task implementation
                                 # from a Python Future implementation.
 
     """A coroutine wrapped in a Future."""
@@ -91,10 +94,17 @@ class Task(futures._PyFuture):  # Inherit Python Task implementation
 
     # If False, don't log a message if the task is destroyed whereas its
     # status is still pending
-    _log_destroy_pending = True
+    _log_destroy_pending: bool = True
 
-    def __init__(self, coro, *, loop=None, name=None, context=None):  # type: ignore[no-untyped-def]
-        super().__init__(loop=loop)  # type: ignore[no-untyped-call]
+    def __init__(
+        self,
+        coro: Coroutine[object, None, _T],
+        *,
+        loop: asyncio.AbstractEventLoop | None=None,
+        name: str | None =None,
+        context: contextvars.Context| None =None,
+    ):
+        super().__init__(loop=loop)
         if self._source_traceback:
             del self._source_traceback[-1]
         if not coroutines.iscoroutine(coro):
